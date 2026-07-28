@@ -21,7 +21,7 @@ with st.sidebar:
     ## Create an expandable dropdown for Maximum Heart Rate
     with st.expander("Maximum Heart Rate (thalch)"):
         ## Provide the definition inside the expander
-        st.markdown("The highest heart rate a person achieved during a physical stress test.")
+        st.markdown("The highest heart rate a person achieves during a physical stress test.")
         
     ## Create an expandable dropdown for Exercise-Induced Angina
     with st.expander("Exercise-Induced Angina (exang)"):
