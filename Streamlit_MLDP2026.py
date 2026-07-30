@@ -3,12 +3,14 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 
-
+## Page name
+st.set_page_config(
+    page_title="Heart Disease Risk Profiler",
+    layout="wide",
+)
 
 
 model = joblib.load("heart_disease_rf_model.pkl")
-
-
 
 
 ## Create a sidebar panel on the left side of the screen
@@ -17,8 +19,19 @@ with st.sidebar:
     st.title("Medical Input Column Names")
     ## Add brief instruction text for the user
     st.write("Use this Dictionary to understand the clinical parameters.")
-    
-    ## Create an expandable dropdown for Maximum Heart Rate
+    ## Create an expandable dropdown for Maximum Heart Rate    
+    with st.expander("Resting Blood Pressure (trestbps)"):
+        st.markdown("Resting blood pressure (in mm Hg) upon admission to the hospital.")
+        
+    with st.expander("Serum Cholesterol (chol)"):
+        st.markdown("Serum cholesterol measurement in mg/dl.")
+        
+    with st.expander("Fasting Blood Sugar (fbs)"):
+        st.markdown("Indicates if the patient's fasting blood sugar is greater than 120 mg/dl, which can be a sign of diabetes.")
+        
+    with st.expander("Resting ECG (restecg)"):
+        st.markdown("Results of the resting electrocardiogram.\n- **Normal:** Normal finding.\n- **LV Hypertrophy:** Probable or definite left ventricular hypertrophy.\n- **ST-T Abnormality:** ST-T wave abnormality.")
+
     with st.expander("Maximum Heart Rate (thalch)"):
         ## Provide the definition inside the expander
         st.markdown("The highest heart rate a person achieves during a physical stress test.")
@@ -38,8 +51,14 @@ with st.sidebar:
         ## Provide the definitions using bullet points
         st.markdown("- **Typical Angina:** Classic chest pain caused by reduced blood flow.\n- **Atypical Angina:** Chest pain not strictly matching typical angina.\n- **Non-anginal:** Chest pain not related to the heart.\n- **Asymptomatic:** No chest pain.")
 
-
-
+    with st.expander("ST Depression (oldpeak)"):
+        st.markdown("ST depression induced by exercise relative to rest. An abnormality check measured via ECG.")
+        
+    with st.expander("Number of Major Vessels (ca)"):
+        st.markdown("Number of major blood vessels (0-3) colored by a medical scan called fluoroscopy.")
+        
+    with st.expander("Thalassemia (thal)"):
+        st.markdown("A genetic blood condition.\n- **Normal:** Normal blood flow.\n- **Fixed Defect:** No blood flow in some part of the heart.\n- **Reversable Defect:** Blood flow is observed but not normal.")
 
 
 ## Set the main title of the web application
@@ -76,11 +95,8 @@ fbs = "True" if fbs_ui == "Yes" else "False"
 exang = "True" if exang_ui == "Yes" else "False"
 
 
-
-
-
 ## Create a button that runs the prediction code only when clicked
-if st.button("Predict Heart Disease Risk"):
+if st.button("Predict Heart Disease Risk", type="primary"):
 
     input_data = [[age, sex, cp, trestbps, chol, fbs, restecg, thalch, exang, oldpeak, slope, ca, thal]]
     ## Defining the exact column names matching the training dataset
@@ -93,8 +109,6 @@ if st.button("Predict Heart Disease Risk"):
     categorical_cols = ['sex', 'cp', 'fbs', 'restecg', 'exang', 'slope', 'ca', 'thal']
     ## Apply get_dummies to convert categories into binary (0 or 1) columns, dropping the first to avoid multicollinearity
     df_input = pd.get_dummies(df_input, columns=categorical_cols, drop_first=True)
-
-
 
 
     ## Create an exact list of the 20 columns the Random Forest model expects to see
@@ -126,15 +140,11 @@ if st.button("Predict Heart Disease Risk"):
     df_input = df_input.reindex(columns=model_columns, fill_value=0)
 
 
-
-
     ## Generate Prediction
     ## Feed the processed DataFrame into the trained model to predict the class (0 or 1)
     prediction = model.predict(df_input)[0]
     ## Feed the processed DataFrame into the trained model to get the confidence percentage
     prediction_proba = model.predict_proba(df_input)[0]
-
-
 
 
     ## Display Results
@@ -154,3 +164,42 @@ if st.button("Predict Heart Disease Risk"):
         st.success("Prediction: Low Risk / No Heart Disease Detected\n(Low Risk does not mean no risk)")
         ## Print the exact confidence percentage for class 0
         st.write(f"Confidence Score: {prediction_proba[0] * 100:.2f}%")
+
+    
+    ## Clinical Advice Section for Doctors/Nurses
+    st.markdown("---")
+    st.markdown("### Clinical Advice")
+    
+    advice_list = []
+    risk_count = 0
+    
+    ## Blood Pressure Check
+    if trestbps > 120:
+        advice_list.append("- **High Blood Pressure:** Resting BP is above 120 mmHg. Eat less salt, exercise daily and use blood pressure medication correctly..")
+        risk_count += 1
+        
+    ## Cholesterol Check
+    if chol > 200:
+        advice_list.append("- **High Cholesterol:** Serum cholesterol is above 200 mg/dl. Eat less saturated fat, increase soluble fiber intake, exercise daily and evaluate the need for cholesterol-lowering medication.")
+        risk_count += 1
+        
+    ## Fasting Blood Sugar Check
+    if fbs == "True":
+        advice_list.append("- **High Blood Sugar:** Fasting blood sugar is over 120 mg/dl. This suggests prediabetes or diabetes. Recommend an HbA1c(Blood) test and diet adjustments.")
+        risk_count += 1
+        
+    ## Max Heart Rate Check
+    estimated_max_hr = 220 - age
+    if thalch < (estimated_max_hr * 0.7):
+        advice_list.append(f"- **Low Maximum Heart Rate:** Heart rate during exercise ({thalch} bpm) was lower than expected for their age. Verify if they are on beta-blockers(MEDICNE that LOWERS BLOOD PRESSURE and Slows HEART RATE) or assess their cardiovascular fitness.")
+
+    ## Display compounded risk warning if multiple flags are triggered
+    if risk_count >= 1:
+        st.error(f" **Compounded Risk Warning:** The patient presents {risk_count} primary metabolic risk factors (High BP, Cholesterol, or Blood Sugar). Combined risk factors exponentially increase the likelihood of a cardiovascular event. Prioritize comprehensive lifestyle and close medical follow-up.")
+
+    ## Display the specific clinical advice notes
+    if len(advice_list) > 0:
+        for advice in advice_list:
+            st.warning(advice)
+    else:
+        st.success("- All major clinical parameters (Cholesterol, Blood Pressure, Blood Sugar) are currently within standard healthy ranges. Encourage the patient to maintain their current healthy habits.")
